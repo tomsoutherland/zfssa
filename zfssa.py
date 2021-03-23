@@ -83,6 +83,7 @@ def do_url(url, meth, user, passw, body, ct):
     return r.status, json_data
 
 def json_recurse(url, user, passw, json_data, rcode, done):
+    print('\nURL', url)
     print('Response Code', rcode, '\n')
     print(json.dumps(json_data, sort_keys=True, indent=4))
     match = re.search(r'(\S+)(/api\S+)', url)

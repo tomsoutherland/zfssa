@@ -6,8 +6,11 @@ Requires urllib3
 
 <pre>
 % zfssa --help
-usage: zfssa [-h] [-u U] [-p P] [-l L] [-m {get,put,post,delete}] [-r] [-j k1:v1,k2:v2,.. | --json /path/to/json | --jsin | --wflo /../foo.akwf | --scrp /../foo.aksh | --upgr /../foo.pkg]
-             [--api HOST[:PORT]] [-s svc[,svc]] [-v [v1 v2 v1,v2]]
+usage: 
+zfssa [-h | --help] 
+zfssa [-u U] [-p P] [-l L] [-m {get,put,post,delete}] [-r] \
+      [-j k1:v1,k2:v2,.. | --json /path/to/json | --jsin | --wflo /../foo.akwf | --scrp /../foo.aksh | --upgr /../foo.pkg]
+zfssa [-u U] [p P] [--api HOST[:PORT]] [-s svc[,svc]] [-v [v1 v2 v1,v2]]
 
 Query a ZFSSA rest API
 
