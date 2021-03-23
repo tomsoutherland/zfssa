@@ -1,6 +1,6 @@
-zfssa
+zfssa.py
 
-python3 program to interact with the Oracle ZFS Storage Appliance
+A python3 program to interact with the rest api in the Oracle ZFS Storage Appliance
 
 Requires urllib3
 
