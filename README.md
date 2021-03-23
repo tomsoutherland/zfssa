@@ -10,8 +10,8 @@ usage: zfssa [-h] [-u U] [-p P] [-l L] [-m {get,put,post,delete}] [-r] [-j k1:v1
 
 Query a ZFSSA rest API
 
-optional arguments:  
-  -h, --help            show this help message and exit  
+optional arguments:  <br />
+  -h, --help            show this help message and exit  <br />
   -u U                  User name to use in authentication  
   -p P                  User password to use in authentication  
   -l L                  URL for REST method  
