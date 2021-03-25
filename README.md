@@ -2,7 +2,8 @@ zfssa.py
 
 A python3 program to interact with the rest api in the Oracle ZFS Storage Appliance
 
-Requires urllib3
+Requires requests  
+  macOS % sudo -H python3 -m pip install requests
 
 <pre>
 % zfssa --help
