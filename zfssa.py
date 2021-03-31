@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
-import json, argparse, ssl, re, sys, urllib3
+import json, argparse, ssl, re, sys, requests
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from os.path import join, basename
+from os import environ
 from collections import defaultdict
 
 def api_help(user, passw, host, versions, services):
@@ -48,39 +50,28 @@ def api_help(user, passw, host, versions, services):
                       "https://" + host + "/api/" + join(s, v) + "/<path>")
     print("\nAPI Docs -> https://docs.oracle.com/cd/F13758_01/html/F13772/index.html")
 
-def do_url(url, meth, user, passw, body, ct):
-    urllib3.disable_warnings()
-    http = urllib3.PoolManager(cert_reqs=ssl.CERT_NONE)
-    headers = urllib3.make_headers(basic_auth=user + ':' + passw)
-    if body:
-        if ct == 'application/json':
-            headers.update({'Content-Type':ct})
-            encoded_data = json.dumps(body).encode('utf-8')
-            r = http.request(meth, url, headers=headers, body=encoded_data)
-        elif ct == 'application/javascript':
-            headers.update({'Content-Type': ct})
-            r = http.request(meth, url, headers=headers, body=body)
-        elif ct == 'application/x-www-form-urlencoded':
-            headers.update({'Content-Type': ct})
-            r = http.request(meth, url, headers=headers, body=body)
-            if r.status == 201:
-                print('Response Code', r.status, '\n')
-                print(r.data.decode('utf-8'))
-                sys.exit(0)
-        elif ct == 'application/octet-stream':
-            headers.update({'Content-Type': ct})
-            r = http.request(meth, url, headers=headers, body=body)
-            if r.status == 201:
-                print('Response Code', r.status, '\n')
-                print(r.data.decode('utf-8'))
-                sys.exit(0)
-    else:
-        r = http.request(meth, url, headers=headers)
+def do_url(url, meth, user, passw, body, headers):
+    requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
     try:
-        json_data = json.loads(r.data.decode('utf-8'))
+        if meth == 'GET':
+            r = requests.get(url, auth=(user, passw), verify=False, data=body, headers=headers)
+        elif meth == 'PUT':
+            r = requests.put(url, auth=(user, passw), verify=False, data=body, headers=headers)
+        elif meth == 'POST':
+            r = requests.post(url, auth=(user, passw), verify=False, data=body, headers=headers)
+        elif meth == 'DELETE':
+            r = requests.delete(url, auth=(user, passw), verify=False, data=body, headers=headers)
+        else:
+            print("Invalid method,", meth)
+            return 404, None
+    except Exception as e:
+        print(str(e))
+        return None, None
+    try:
+        json_data = json.loads(r.text)
     except:
         json_data = None
-    return r.status, json_data
+    return r.status_code, json_data
 
 def json_recurse(url, user, passw, json_data, rcode, done):
     print('\nURL', url)
@@ -97,9 +88,13 @@ def json_recurse(url, user, passw, json_data, rcode, done):
                 break
         else:
             if url != nurl:
-                rcode, json_data = do_url(host + url, "GET", user, passw, None, 'application/json')
+                rcode, json_data = do_url(host + url, "GET", user, passw, None, None)
                 json_recurse(host + url, user, passw, json_data, rcode, done)
-
+def no_proxy():
+    environ.pop('http_proxy', None)
+    environ.pop('https_proxy', None)
+    environ.pop('HTTP_PROXY', None)
+    environ.pop('HTTPS_PROXY', None)
 def main():
     parser = argparse.ArgumentParser(description='Query a ZFSSA rest API')
     parser.add_argument('-u', type=str, help='User name to use in authentication')
@@ -107,6 +102,7 @@ def main():
     parser.add_argument('-l', type=str, help="URL for REST method")
     parser.add_argument('-m', type=str.lower, choices=['get', 'put', 'post', 'delete'], help="Method to use for URL")
     parser.add_argument('-r', action='store_true', help="Recurse into JSON results URLs")
+    parser.add_argument('-x', action='store_true', help="Use proxy environment (http[s]_proxy=)")
 
     json_group = parser.add_argument_group('json/payload input options').add_mutually_exclusive_group()
     json_group.add_argument('-j', type=str,
@@ -124,6 +120,8 @@ def main():
     api_help_group.add_argument('-v', help="Optional version(s)", metavar = '[v1 v2 v1,v2]')
     results = parser.parse_args()
 
+    if not results.x:
+        no_proxy()
     if results.api:
         if not (results.u and results.p):
             parser.print_help()
@@ -138,19 +136,20 @@ def main():
             versions = None
         api_help(results.u, results.p, results.api, versions, services)
     elif results.u and results.p and results.l and results.m:
-        body = ct = None
+        body = headers = None
         if results.j or results.json or results.jsin:
-            ct = 'application/json'
+            headers = {'Content-type': 'application/json'}
         if results.j:
-            body = {}
+            b = {}
             for kv in re.split(',', results.j):
                 [k, v] = kv.split(':')
                 if v.lower() == 'true':
-                    body[k] = True
+                    b.update({k: True})
                 elif v.lower() == 'false':
-                    body[k] = False
+                    b.update({k: False})
                 else:
-                    body[k] = v
+                    b.update({k: v})
+            body = json.dumps(b)
         elif results.json:
             with open(results.json) as json_file:
                 body = json.load(json_file)
@@ -160,17 +159,17 @@ def main():
         elif results.wflo:
             with open(results.wflo) as fp:
                 body = fp.read()
-                ct = 'application/javascript'
+                headers = {'Content-type': 'application/javascript'}
         elif results.scrp:
             with open(results.scrp) as fp:
                 body = fp.read()
-                ct = 'application/x-www-form-urlencoded'
+                headers = {'Content-type': 'application/x-www-form-urlencoded'}
         elif results.upgr:
             with open(results.upgr, 'rb') as fp:
                 body = fp.read()
-                ct = 'application/octet-stream'
+                headers = {'Content-type': 'application/octet-stream'}
         meth = results.m.upper()
-        rcode, json_data = do_url(results.l, meth, results.u, results.p, body, ct)
+        rcode, json_data = do_url(results.l, meth, results.u, results.p, body, headers)
         if results.r and meth == 'GET':
             json_recurse(results.l, results.u, results.p, json_data, rcode, [])
         else:
