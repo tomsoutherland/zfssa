@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
-import json, argparse, ssl, re, sys, requests
+import json, argparse, re, sys, requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from os.path import join, basename
 from os import environ
 from collections import defaultdict
+
+json_indent = 2
 
 def api_help(user, passw, host, versions, services):
     api_services = defaultdict(list)
@@ -20,7 +22,6 @@ def api_help(user, passw, host, versions, services):
                 url = 'https://' + host + '/api/' + join(s, v)
                 rcode, json_data = do_url(url, "GET", user, passw, None, None)
                 if rcode != 200: continue
-                #print(json.dumps(json_data, sort_keys=True, indent=4))
                 for i in json_data["service"]["methods"]:
                     if i['path']:
                         k = i['path'] + " " + i['request']
@@ -76,7 +77,7 @@ def do_url(url, meth, user, passw, body, headers):
 def json_recurse(url, user, passw, json_data, rcode, done):
     print('\nURL', url)
     print('Response Code', rcode, '\n')
-    print(json.dumps(json_data, sort_keys=True, indent=4))
+    print(json.dumps(json_data, sort_keys=True, indent=json_indent))
     match = re.search(r'(\S+)(/api\S+)', url)
     if match:
         host = match.group(1)
@@ -174,7 +175,7 @@ def main():
             json_recurse(results.l, results.u, results.p, json_data, rcode, [])
         else:
             print('Response Code', rcode, '\n')
-            print(json.dumps(json_data, sort_keys=True, indent=4))
+            print(json.dumps(json_data, sort_keys=True, indent=json_indent))
 
 if __name__ == '__main__':
     main()
